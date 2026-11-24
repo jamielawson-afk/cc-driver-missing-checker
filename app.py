@@ -4,15 +4,64 @@ import io
 import os
 import re
 import sqlite3
+import secrets
+import time
+from werkzeug.security import check_password_hash
 from pathlib import Path
 from flask import redirect, url_for, flash
 import unicodedata
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session, abort
 from openpyxl import load_workbook
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
 app.secret_key = os.environ.get('SECRET_KEY', 'development-only-change-this')
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SECURE=True, SESSION_COOKIE_SAMESITE='Lax', PERMANENT_SESSION_LIFETIME=3600)
+_attempts = {}
+
+@app.route('/login', methods=['GET','POST'])
+def office_login():
+    if session.get('office'):
+        return redirect('/')
+    error = None
+    if request.method == 'POST':
+        ip = request.remote_addr or 'unknown'
+        now = time.monotonic()
+        recent = [t for t in _attempts.get(ip, []) if now-t < 900]
+        if len(recent) >= 10:
+            error = 'Too many attempts. Try again later.'
+        else:
+            password_hash = os.environ.get('OFFICE_PASSWORD_HASH', '')
+            if password_hash and check_password_hash(password_hash, request.form.get('password','')):
+                _attempts.pop(ip, None)
+                session.clear()
+                session.permanent = True
+                session['office'] = True
+                session['csrf'] = secrets.token_urlsafe(32)
+                return redirect('/')
+            recent.append(now)
+            _attempts[ip] = recent
+            error = 'Incorrect office password.'
+    return render_template('login.html', error=error)
+
+@app.before_request
+def protect_office():
+    if request.endpoint in ('health','office_login','static'):
+        return
+    if not session.get('office'):
+        return redirect('/login')
+    if request.method == 'POST' and request.form.get('csrf_token','') != session.get('csrf'):
+        abort(400)
+
+@app.post('/logout')
+def office_logout():
+    session.clear()
+    return redirect('/login')
+
+@app.context_processor
+def csrf_context():
+    return {'csrf_token': session.get('csrf','')}
+
 DB_PATH = Path(os.environ.get('MASTER_DB_PATH', '/data/mentor.sqlite3' if Path('/data').is_dir() else 'mentor.sqlite3'))
 
 def db():

@@ -6,9 +6,9 @@
 .master-row{display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;margin:10px 0;align-items:center}.master-row input{min-width:0}.master-row button{margin:0;padding:12px}.danger{background:#a32f2f}.add-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end}.add-row button{margin:0}.add-row label{margin-top:0}@media(max-width:620px){.master-row,.add-row{grid-template-columns:1fr 1fr}}
 </style></head><body><main class="wrap">
 <header><h1>CONNECTED COURIERS</h1><p>Mentor Checker — compare names, not VINs</p></header>
-<nav class="panel"><a href="#checker">Mentor Checker</a> | <a href="#master">Master List</a></nav>
+<form method="post" action="/logout" style="text-align:right"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">Log out</button></form><nav class="panel"><a href="#checker">Mentor Checker</a> | <a href="#master">Master List</a></nav>
 {% for msg in get_flashed_messages() %}<p class="panel">{{ msg }}</p>{% endfor %}
-<section class="panel" id="checker"><h2>Upload today's lists</h2><form action="/" method="post" enctype="multipart/form-data">
+<section class="panel" id="checker"><h2>Upload today's lists</h2><form action="/" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 <label for="routes">1. Amazon Routes report</label><input id="routes" type="file" name="routes" accept=".xlsx,.csv" required>
 <label for="driver_text">2. Copy and paste driver names</label><textarea id="driver_text" name="driver_text" placeholder="Dewi&#9;Preece&#9;VF7VJYHV4SZ072680&#10;Robert&#9;Cheval&#9;WDF63960323613406"></textarea>
 <p class="hint">Upload the Amazon Routes report and paste your driver names, then compare. VINs are ignored. Duplicate names are counted once. Known spelling variations are matched. Files are processed in memory, not saved by the app.</p>
@@ -20,7 +20,7 @@
 <script>function downloadCSV(){const names={{ results.missing|tojson }};const csv='Driver Name\r\n'+names.map(n=>'"'+n.replaceAll('"','""')+'"').join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='connected-couriers-missing-drivers.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}</script>{% endif %}
 <section class="panel" id="master"><h2>Master List — Driver Codes</h2>
 <p class="hint">Keep a register of driver names and their two Mentor code values. Search, edit and delete entries below.</p>
-<form class="add-row" method="post" action="/master/add">
+<form class="add-row" method="post" action="/master/add"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 <div><label>Driver full name</label><input name="name" placeholder="First name Surname" required></div>
 <div><label>First-name code</label><input name="code1" placeholder="First-name code" maxlength="100" required></div><div><label>Last-name code</label><input name="code2" placeholder="Last-name code" maxlength="100" required></div>
 <button type="submit">Add Driver</button></form>
@@ -28,11 +28,11 @@
 <input type="search" placeholder="Search name or code" oninput="document.querySelectorAll('.master-row').forEach(r=>r.hidden=!r.dataset.search.includes(this.value.toLowerCase().trim()))">
 {% for driver in master %}
 <div class="master-row" data-search="{{ (driver.name ~ ' ' ~ driver.code1 ~ ' ' ~ driver.code2)|lower }}">
-<form method="post" action="/master/edit/{{ driver.id }}" style="display:contents">
+<form method="post" action="/master/edit/{{ driver.id }}" style="display:contents"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 <input name="name" aria-label="Driver name" value="{{ driver.name }}" required>
 <input name="code1" aria-label="First-name code" value="{{ driver.code1 }}" required maxlength="100"><input name="code2" aria-label="Last-name code" value="{{ driver.code2 }}" required maxlength="100">
 <button type="submit">Save</button></form>
-<form method="post" action="/master/delete/{{ driver.id }}" onsubmit="return confirm('Delete this driver?')"><button class="danger" type="submit">Delete</button></form>
+<form method="post" action="/master/delete/{{ driver.id }}" onsubmit="return confirm('Delete this driver?')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger" type="submit">Delete</button></form>
 </div>
 {% else %}<p class="hint">No drivers added yet.</p>{% endfor %}
 </section></main></body></html>

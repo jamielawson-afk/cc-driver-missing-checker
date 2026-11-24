@@ -22,3 +22,6 @@ Master List records use SQLite. For Railway, mount a persistent volume at `/data
 
 ## Seeded register
 59 supplied drivers are preloaded on the first run of a new SQLite database. Each record has first-name and last-name code; the **pair** must be unique, not each individual code. Existing database migrations from the earlier one-code prototype are not automatic.
+
+## Office password
+Before deployment set Railway variable `OFFICE_PASSWORD_HASH` to a Werkzeug password hash. Generate with `python -c "from werkzeug.security import generate_password_hash; import getpass; print(generate_password_hash(getpass.getpass('Office password: ')))"`. Keep password and hash out of GitHub. Existing `SECRET_KEY` must remain stable. Login protects both areas, with a one-hour session.

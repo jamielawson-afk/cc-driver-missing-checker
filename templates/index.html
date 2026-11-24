@@ -7,9 +7,8 @@
 <header><h1>CONNECTED COURIERS</h1><p>Driver Missing Checker — compare names, not VINs</p></header>
 <section class="panel"><h2>Upload today's lists</h2><form action="/" method="post" enctype="multipart/form-data">
 <label for="routes">1. Amazon Routes report</label><input id="routes" type="file" name="routes" accept=".xlsx,.csv" required>
-<label for="drivers">2. Driver list (optional upload)</label><input id="drivers" type="file" name="drivers" accept=".xlsx,.csv">
-<label for="driver_text">Or paste driver names</label><textarea id="driver_text" name="driver_text" placeholder="Dewi&#9;Preece&#9;VF7VJYHV4SZ072680&#10;Robert&#9;Cheval&#9;WDF63960323613406"></textarea>
-<p class="hint">Upload either a second file or paste your list, then compare. VINs are ignored. Duplicate names are counted once. Known spelling variations are matched. Files are processed in memory, not saved by the app.</p>
+<label for="driver_text">2. Copy and paste driver names</label><textarea id="driver_text" name="driver_text" placeholder="Dewi&#9;Preece&#9;VF7VJYHV4SZ072680&#10;Robert&#9;Cheval&#9;WDF63960323613406"></textarea>
+<p class="hint">Upload the Amazon Routes report and paste your driver names, then compare. VINs are ignored. Duplicate names are counted once. Known spelling variations are matched. Files are processed in memory, not saved by the app.</p>
 <button type="submit">Compare Drivers</button></form></section>
 {% if error %}<section class="panel error" role="alert">{{ error }}</section>{% endif %}
 {% if results %}<section class="panel"><h2>Comparison results</h2><div class="stats"><div class="stat"><strong>{{ results.route_count }}</strong>Amazon drivers</div><div class="stat"><strong>{{ results.matched_count }}</strong>Matched drivers</div><div class="stat"><strong>{{ results.missing|length }}</strong>Missing drivers</div></div>

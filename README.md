@@ -1,4 +1,4 @@
-# Connected Couriers — Mentor Checker
+# Connected Couriers — Driver Missing Checker
 
 Standalone Flask app for comparing the Amazon Routes report against the daily driver list. It **compares names only**, ignores VINs, trims spaces, normalises case, and applies explicit known spelling variations. The upload files are processed in memory and are not retained. No database is required.
 
@@ -16,3 +16,9 @@ Upload an Amazon `.xlsx` or `.csv` report with a **Driver name** column. Upload 
 ## Notes
 
 The app is not authentication protected. Add access control before distributing the public URL beyond authorised office users. The default app stores no uploaded personal data; avoid adding logs containing names or file content.
+
+## Master List storage
+Master List records use SQLite. For Railway, mount a persistent volume at `/data` and set `MASTER_DB_PATH=/data/mentor.sqlite3` before adding drivers. Without persistent storage records may be lost on redeploy. Protect the application with authentication before storing staff information. Set a secure `SECRET_KEY` environment variable.
+
+## Seeded register
+59 supplied drivers are preloaded on the first run of a new SQLite database. Each record has first-name and last-name code; the **pair** must be unique, not each individual code. Existing database migrations from the earlier one-code prototype are not automatic.

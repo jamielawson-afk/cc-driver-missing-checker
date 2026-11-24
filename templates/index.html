@@ -3,9 +3,12 @@
 <title>Connected Couriers | Mentor Checker</title>
 <style>
 :root{font-family:system-ui,-apple-system,sans-serif;color:#192641;background:#f3f6fa}*{box-sizing:border-box}body{margin:0}.wrap{max-width:850px;margin:0 auto;padding:26px 18px}header{background:#142947;color:white;padding:27px;border-radius:16px}header h1{font-size:25px;margin:0}header p{color:#bed1e5;margin-bottom:0}.panel{background:white;padding:25px;margin-top:19px;border-radius:14px;box-shadow:0 2px 14px #152d4d12}label{font-weight:650;display:block;margin:18px 0 8px}input,textarea{display:block;width:100%;border:1px solid #b6c6d8;border-radius:9px;padding:13px;font:inherit}textarea{min-height:120px;resize:vertical}button{background:#1763c6;color:#fff;border:0;border-radius:9px;padding:14px 22px;font-weight:700;font:inherit;cursor:pointer;margin-top:20px}button:hover{background:#0d4f9f}.hint{font-size:14px;color:#59697c;line-height:1.5}.stats{display:flex;gap:10px;flex-wrap:wrap}.stat{flex:1;min-width:115px;background:#eef4ff;border-radius:10px;padding:16px}.stat strong{font-size:28px;display:block}.missing{border-left:4px solid #d84936;background:#fff4f1;padding:12px;margin:9px 0;border-radius:5px}.error{border-left:4px solid #bb3838;color:#8b2424}.ok{color:#167a42;font-weight:700}
+.master-row{display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;margin:10px 0;align-items:center}.master-row input{min-width:0}.master-row button{margin:0;padding:12px}.danger{background:#a32f2f}.add-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end}.add-row button{margin:0}.add-row label{margin-top:0}@media(max-width:620px){.master-row,.add-row{grid-template-columns:1fr 1fr}}
 </style></head><body><main class="wrap">
 <header><h1>CONNECTED COURIERS</h1><p>Mentor Checker — compare names, not VINs</p></header>
-<section class="panel"><h2>Upload today's lists</h2><form action="/" method="post" enctype="multipart/form-data">
+<nav class="panel"><a href="#checker">Mentor Checker</a> | <a href="#master">Master List</a></nav>
+{% for msg in get_flashed_messages() %}<p class="panel">{{ msg }}</p>{% endfor %}
+<section class="panel" id="checker"><h2>Upload today's lists</h2><form action="/" method="post" enctype="multipart/form-data">
 <label for="routes">1. Amazon Routes report</label><input id="routes" type="file" name="routes" accept=".xlsx,.csv" required>
 <label for="driver_text">2. Copy and paste driver names</label><textarea id="driver_text" name="driver_text" placeholder="Dewi&#9;Preece&#9;VF7VJYHV4SZ072680&#10;Robert&#9;Cheval&#9;WDF63960323613406"></textarea>
 <p class="hint">Upload the Amazon Routes report and paste your driver names, then compare. VINs are ignored. Duplicate names are counted once. Known spelling variations are matched. Files are processed in memory, not saved by the app.</p>
@@ -15,4 +18,21 @@
 <h3>Missing from the second list</h3>{% for name in results.missing %}<div class="missing">{{ loop.index }}. {{ name }}</div>{% else %}<p class="ok">All route drivers were found in your second list.</p>{% endfor %}
 <button type="button" onclick="downloadCSV()">Download missing names CSV</button></section>
 <script>function downloadCSV(){const names={{ results.missing|tojson }};const csv='Driver Name\r\n'+names.map(n=>'"'+n.replaceAll('"','""')+'"').join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='connected-couriers-missing-drivers.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}</script>{% endif %}
-</main></body></html>
+<section class="panel" id="master"><h2>Master List — Driver Codes</h2>
+<p class="hint">Keep a register of driver names and their two Mentor code values. Search, edit and delete entries below.</p>
+<form class="add-row" method="post" action="/master/add">
+<div><label>Driver full name</label><input name="name" placeholder="First name Surname" required></div>
+<div><label>First-name code</label><input name="code1" placeholder="First-name code" maxlength="100" required></div><div><label>Last-name code</label><input name="code2" placeholder="Last-name code" maxlength="100" required></div>
+<button type="submit">Add Driver</button></form>
+<h3>Registered drivers ({{ master|length }})</h3>
+<input type="search" placeholder="Search name or code" oninput="document.querySelectorAll('.master-row').forEach(r=>r.hidden=!r.dataset.search.includes(this.value.toLowerCase().trim()))">
+{% for driver in master %}
+<div class="master-row" data-search="{{ (driver.name ~ ' ' ~ driver.code1 ~ ' ' ~ driver.code2)|lower }}">
+<form method="post" action="/master/edit/{{ driver.id }}" style="display:contents">
+<input name="name" aria-label="Driver name" value="{{ driver.name }}" required>
+<input name="code1" aria-label="First-name code" value="{{ driver.code1 }}" required maxlength="100"><input name="code2" aria-label="Last-name code" value="{{ driver.code2 }}" required maxlength="100">
+<button type="submit">Save</button></form>
+<form method="post" action="/master/delete/{{ driver.id }}" onsubmit="return confirm('Delete this driver?')"><button class="danger" type="submit">Delete</button></form>
+</div>
+{% else %}<p class="hint">No drivers added yet.</p>{% endfor %}
+</section></main></body></html>

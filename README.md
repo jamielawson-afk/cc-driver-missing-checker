@@ -28,3 +28,7 @@ Before deployment set Railway variable `OFFICE_PASSWORD_HASH` to a Werkzeug pass
 
 ## Master List code pair search
 Paste the first-name and last-name codes separated by a tab, space, or newline. Both codes must belong to the same driver. Search also supports single codes and names; a visible message names matching drivers or says No matching driver found.
+
+
+## Driver Training Recommendations
+Office-only `/training` page accepts Amazon Mentor Driver Report .xlsx/.csv. Matches the two encoded First Name/Last Name fields against current SQLite Master List, case-insensitively. Shows real names only on a unique pair match; never guesses. Minimum 805, maximum 850; below 805 receives event-specific coaching suggestions. No uploaded report stored. Sorted lowest score first. Print to PDF in browser.

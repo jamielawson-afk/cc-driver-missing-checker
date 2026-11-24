@@ -243,6 +243,82 @@ def delete_master(driver_id):
 
 
 
+
+
+def parse_driver_training_report(file):
+    rows = read_rows(file)
+    if not rows:
+        raise ValueError('Please upload a Driver Report (.xlsx or .csv).')
+    headers = [str(x or '').strip() for x in rows[0]]
+    required = ('First Name', 'Last Name', 'FICO® Safe Driving Score')
+    if any(key not in headers for key in required):
+        raise ValueError('This is not a recognised Mentor Driver Report. Expected first/last name codes and FICO Safe Driving Score columns.')
+    columns = {key: i for i, key in enumerate(headers) if key}
+    with db() as conn:
+        drivers = [dict(r) for r in conn.execute('SELECT name, code1, code2 FROM master')]
+    by_pair = {}
+    for d in drivers:
+        key = (d['code1'].strip().casefold(), d['code2'].strip().casefold())
+        by_pair.setdefault(key, []).append(d['name'])
+    output = []
+    for values in rows[1:]:
+        def get(key):
+            i = columns.get(key)
+            return values[i] if i is not None and i < len(values) else None
+        first = str(get('First Name') or '').strip()
+        last = str(get('Last Name') or '').strip()
+        score_value = get('FICO® Safe Driving Score')
+        if not first and not last and score_value is None:
+            continue
+        try:
+            score = float(score_value)
+        except (ValueError, TypeError):
+            continue
+        if not (0 <= score <= 850):
+            continue
+        names = by_pair.get((first.casefold(), last.casefold()), [])
+        matched = len(names) == 1
+        name = names[0] if matched else 'Unmatched driver' if not names else 'Ambiguous driver'
+        findings = []
+        if score < 805:
+            for count_col, rating_col, title, suggestion in [
+                ('Speeding', 'Speeding Rating', 'Speeding', 'Review speed limits, use cruise control where appropriate, and avoid rushing to meet delivery times.'),
+                ('Hard Braking', 'Braking Rating', 'Harsh braking', 'Increase following distance, scan further ahead, and brake progressively.'),
+                ('Hard Cornering', 'Cornering Rating', 'Harsh cornering', 'Reduce speed before turns and roundabouts; steer smoothly.'),
+                ('Hard Acceleration', 'Acceleration Rating', 'Harsh acceleration', 'Pull away gently and increase speed smoothly.'),
+                ('Distraction', 'Distraction Rating', 'Driver distraction', 'Keep attention on the road; pull over safely before interacting with devices.'),
+                ('Phone Calls', None, 'Phone calls', 'Do not make, accept, or handle calls while driving; stop in a safe place first.'),
+                ('Phone Manipulations', None, 'Phone handling', 'Do not touch or operate a phone while driving; set navigation before departure.'),
+            ]:
+                value = get(count_col)
+                rating = str(get(rating_col) or '').strip().casefold() if rating_col else ''
+                try: count = float(value or 0)
+                except (ValueError, TypeError): count = 0
+                if count > 0 or rating in ('medium risk', 'high risk'):
+                    findings.append({'issue': title, 'detail': suggestion})
+            if not findings:
+                findings.append({'issue': 'General driving review', 'detail': 'Review the detailed Mentor feedback with the driver, provide a coached drive, and monitor the next report. The available event fields do not identify a specific cause of the low score.'})
+        output.append({'name': name, 'matched': matched, 'code1': first, 'code2': last, 'score': int(score) if score.is_integer() else score,
+                       'below': score < 805, 'gap': max(0, round(805-score,1)), 'findings': findings,
+                       'trips': get('Total Driver Trips')})
+    output.sort(key=lambda d: (d['score'], d['name']))
+    return {'drivers': output, 'below': sum(x['below'] for x in output), 'matched': sum(x['matched'] for x in output),
+            'unmatched': sum(not x['matched'] for x in output)}
+
+@app.route('/training', methods=['GET', 'POST'])
+def training():
+    report = None
+    error = None
+    if request.method == 'POST':
+        try:
+            report = parse_driver_training_report(request.files.get('driver_report'))
+        except (ValueError, UnicodeError, OSError, KeyError, TypeError) as exc:
+            error = str(exc)
+        except Exception:
+            app.logger.exception('Unable to process driver training report')
+            error = 'Could not read this Driver Report. Please check the file and try again.'
+    return render_template('training.html', report=report, error=error)
+
 @app.route('/health')
 def health():
     return {'ok': True}

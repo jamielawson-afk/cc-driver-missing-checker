@@ -6,7 +6,7 @@
 .master-row[hidden]{display:none!important}.search-feedback{font-size:14px;color:#344b66;margin:10px 0}.search-feedback.no-match{color:#a32f2f;font-weight:700}.master-row{display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;margin:10px 0;align-items:center}.master-row input{min-width:0}.master-row button{margin:0;padding:12px}.danger{background:#a32f2f}.add-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end}.add-row button{margin:0}.add-row label{margin-top:0}@media(max-width:620px){.master-row,.add-row{grid-template-columns:1fr 1fr}}
 </style></head><body><main class="wrap">
 <header><h1>CONNECTED COURIERS</h1><p>Mentor Checker — compare names, not VINs</p></header>
-<form method="post" action="/logout" style="text-align:right"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">Log out</button></form><nav class="panel"><a href="#checker">Mentor Checker</a> | <a href="#master">Master List</a></nav>
+<form method="post" action="/logout" style="text-align:right"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">Log out</button></form><nav class="panel"><a href="#checker">Mentor Checker</a> | <a href="#master">Master List</a> | <a href="/training">Driver Training</a></nav>
 {% for msg in get_flashed_messages() %}<p class="panel">{{ msg }}</p>{% endfor %}
 <section class="panel" id="checker"><h2>Upload today's lists</h2><form action="/" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 <label for="routes">1. Amazon Routes report</label><input id="routes" type="file" name="routes" accept=".xlsx,.csv" required>

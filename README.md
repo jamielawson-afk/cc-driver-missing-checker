@@ -25,3 +25,6 @@ Master List records use SQLite. For Railway, mount a persistent volume at `/data
 
 ## Office password
 Before deployment set Railway variable `OFFICE_PASSWORD_HASH` to a Werkzeug password hash. Generate with `python -c "from werkzeug.security import generate_password_hash; import getpass; print(generate_password_hash(getpass.getpass('Office password: ')))"`. Keep password and hash out of GitHub. Existing `SECRET_KEY` must remain stable. Login protects both areas, with a one-hour session.
+
+## Master List code pair search
+Paste the first-name and last-name codes separated by a tab, space, or newline. Both codes must belong to the same driver. Search also supports single codes and names; a visible message names matching drivers or says No matching driver found.

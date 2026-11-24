@@ -3,7 +3,7 @@
 <title>Connected Couriers | Mentor Checker</title>
 <style>
 :root{font-family:system-ui,-apple-system,sans-serif;color:#192641;background:#f3f6fa}*{box-sizing:border-box}body{margin:0}.wrap{max-width:850px;margin:0 auto;padding:26px 18px}header{background:#142947;color:white;padding:27px;border-radius:16px}header h1{font-size:25px;margin:0}header p{color:#bed1e5;margin-bottom:0}.panel{background:white;padding:25px;margin-top:19px;border-radius:14px;box-shadow:0 2px 14px #152d4d12}label{font-weight:650;display:block;margin:18px 0 8px}input,textarea{display:block;width:100%;border:1px solid #b6c6d8;border-radius:9px;padding:13px;font:inherit}textarea{min-height:120px;resize:vertical}button{background:#1763c6;color:#fff;border:0;border-radius:9px;padding:14px 22px;font-weight:700;font:inherit;cursor:pointer;margin-top:20px}button:hover{background:#0d4f9f}.hint{font-size:14px;color:#59697c;line-height:1.5}.stats{display:flex;gap:10px;flex-wrap:wrap}.stat{flex:1;min-width:115px;background:#eef4ff;border-radius:10px;padding:16px}.stat strong{font-size:28px;display:block}.missing{border-left:4px solid #d84936;background:#fff4f1;padding:12px;margin:9px 0;border-radius:5px}.error{border-left:4px solid #bb3838;color:#8b2424}.ok{color:#167a42;font-weight:700}
-.master-row{display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;margin:10px 0;align-items:center}.master-row input{min-width:0}.master-row button{margin:0;padding:12px}.danger{background:#a32f2f}.add-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end}.add-row button{margin:0}.add-row label{margin-top:0}@media(max-width:620px){.master-row,.add-row{grid-template-columns:1fr 1fr}}
+.master-row[hidden]{display:none!important}.search-feedback{font-size:14px;color:#344b66;margin:10px 0}.search-feedback.no-match{color:#a32f2f;font-weight:700}.master-row{display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;margin:10px 0;align-items:center}.master-row input{min-width:0}.master-row button{margin:0;padding:12px}.danger{background:#a32f2f}.add-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end}.add-row button{margin:0}.add-row label{margin-top:0}@media(max-width:620px){.master-row,.add-row{grid-template-columns:1fr 1fr}}
 </style></head><body><main class="wrap">
 <header><h1>CONNECTED COURIERS</h1><p>Mentor Checker — compare names, not VINs</p></header>
 <form method="post" action="/logout" style="text-align:right"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">Log out</button></form><nav class="panel"><a href="#checker">Mentor Checker</a> | <a href="#master">Master List</a></nav>
@@ -25,9 +25,11 @@
 <div><label>First-name code</label><input name="code1" placeholder="First-name code" maxlength="100" required></div><div><label>Last-name code</label><input name="code2" placeholder="Last-name code" maxlength="100" required></div>
 <button type="submit">Add Driver</button></form>
 <h3>Registered drivers ({{ master|length }})</h3>
-<input type="search" placeholder="Search name or code" oninput="document.querySelectorAll('.master-row').forEach(r=>r.hidden=!r.dataset.search.includes(this.value.toLowerCase().trim()))">
+<label for="master-search">Find driver by name or Mentor code</label>
+<input id="master-search" type="search" placeholder="Paste one code or both codes (tab/space separated)" autocomplete="off" oninput="filterMasterList()">
+<p id="master-search-feedback" class="search-feedback" role="status" aria-live="polite">Search by name, one code, or an exact pair of codes.</p>
 {% for driver in master %}
-<div class="master-row" data-search="{{ (driver.name ~ ' ' ~ driver.code1 ~ ' ' ~ driver.code2)|lower }}">
+<div class="master-row" data-name="{{ driver.name|e }}" data-code1="{{ driver.code1|e }}" data-code2="{{ driver.code2|e }}">
 <form method="post" action="/master/edit/{{ driver.id }}" style="display:contents"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 <input name="name" aria-label="Driver name" value="{{ driver.name }}" required>
 <input name="code1" aria-label="First-name code" value="{{ driver.code1 }}" required maxlength="100"><input name="code2" aria-label="Last-name code" value="{{ driver.code2 }}" required maxlength="100">
@@ -35,4 +37,34 @@
 <form method="post" action="/master/delete/{{ driver.id }}" onsubmit="return confirm('Delete this driver?')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger" type="submit">Delete</button></form>
 </div>
 {% else %}<p class="hint">No drivers added yet.</p>{% endfor %}
-</section></main></body></html>
+</section><script>
+function filterMasterList(){
+  const query=document.getElementById('master-search').value.trim();
+  const parts=query.split(/\s+/).filter(Boolean);
+  const rows=[...document.querySelectorAll('.master-row')];
+  const feedback=document.getElementById('master-search-feedback');
+  let matches=0, matchedNames=[];
+  for(const row of rows){
+    const name=row.dataset.name.toLocaleLowerCase();
+    const code1=row.dataset.code1.toLocaleLowerCase();
+    const code2=row.dataset.code2.toLocaleLowerCase();
+    let match;
+    if(!query) match=true;
+    else if(parts.length===2 && parts.every(p=>p.includes('=') || p.length>12)){
+      // Both codes must match the same driver; accept either pasted order.
+      const a=parts[0].toLocaleLowerCase(),b=parts[1].toLocaleLowerCase();
+      match=(a===code1 && b===code2)||(a===code2 && b===code1);
+    }else{
+      const q=query.toLocaleLowerCase();
+      match=name.includes(q)||code1.includes(q)||code2.includes(q);
+    }
+    row.hidden=!match;
+    if(match){matches++;matchedNames.push(row.dataset.name)}
+  }
+  feedback.classList.toggle('no-match',!!query && matches===0);
+  feedback.textContent=!query?'Search by name, one code, or an exact pair of codes.':
+    matches===0?'No matching driver found.':
+    matches===1?'Matching driver: '+matchedNames[0]:
+    matches+' matching drivers: '+matchedNames.join(', ');
+}
+</script></main></body></html>

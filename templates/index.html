@@ -10,7 +10,7 @@
 {% for msg in get_flashed_messages() %}<p class="panel">{{ msg }}</p>{% endfor %}
 <section class="panel" id="checker"><h2>Upload today's lists</h2><form action="/" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 <label for="routes">1. Amazon Routes report</label><input id="routes" type="file" name="routes" accept=".xlsx,.csv" required>
-<label for="driver_text">2. Copy and paste driver names</label><textarea id="driver_text" name="driver_text" placeholder="Dewi&#9;Preece&#9;VF7VJYHV4SZ072680&#10;Robert&#9;Cheval&#9;WDF63960323613406"></textarea>
+<label for="driver_text">2. Copy and paste driver names</label><textarea id="driver_text" name="driver_text"></textarea>
 <p class="hint">Upload the Amazon Routes report and paste your driver names, then compare. VINs are ignored. Duplicate names are counted once. Known spelling variations are matched. Files are processed in memory, not saved by the app.</p>
 <button type="submit">Compare Drivers</button></form></section>
 {% if error %}<section class="panel error" role="alert">{{ error }}</section>{% endif %}

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connected Couriers | Driver Missing Checker</title>
+<style>
+:root{font-family:system-ui,-apple-system,sans-serif;color:#192641;background:#f3f6fa}*{box-sizing:border-box}body{margin:0}.wrap{max-width:850px;margin:0 auto;padding:26px 18px}header{background:#142947;color:white;padding:27px;border-radius:16px}header h1{font-size:25px;margin:0}header p{color:#bed1e5;margin-bottom:0}.panel{background:white;padding:25px;margin-top:19px;border-radius:14px;box-shadow:0 2px 14px #152d4d12}label{font-weight:650;display:block;margin:18px 0 8px}input,textarea{display:block;width:100%;border:1px solid #b6c6d8;border-radius:9px;padding:13px;font:inherit}textarea{min-height:120px;resize:vertical}button{background:#1763c6;color:#fff;border:0;border-radius:9px;padding:14px 22px;font-weight:700;font:inherit;cursor:pointer;margin-top:20px}button:hover{background:#0d4f9f}.hint{font-size:14px;color:#59697c;line-height:1.5}.stats{display:flex;gap:10px;flex-wrap:wrap}.stat{flex:1;min-width:115px;background:#eef4ff;border-radius:10px;padding:16px}.stat strong{font-size:28px;display:block}.missing{border-left:4px solid #d84936;background:#fff4f1;padding:12px;margin:9px 0;border-radius:5px}.error{border-left:4px solid #bb3838;color:#8b2424}.ok{color:#167a42;font-weight:700}
+</style></head><body><main class="wrap">
+<header><h1>CONNECTED COURIERS</h1><p>Driver Missing Checker — compare names, not VINs</p></header>
+<section class="panel"><h2>Upload today's lists</h2><form action="/" method="post" enctype="multipart/form-data">
+<label for="routes">1. Amazon Routes report</label><input id="routes" type="file" name="routes" accept=".xlsx,.csv" required>
+<label for="drivers">2. Driver list (optional upload)</label><input id="drivers" type="file" name="drivers" accept=".xlsx,.csv">
+<label for="driver_text">Or paste driver names</label><textarea id="driver_text" name="driver_text" placeholder="Dewi&#9;Preece&#9;VF7VJYHV4SZ072680&#10;Robert&#9;Cheval&#9;WDF63960323613406"></textarea>
+<p class="hint">Upload either a second file or paste your list, then compare. VINs are ignored. Duplicate names are counted once. Known spelling variations are matched. Files are processed in memory, not saved by the app.</p>
+<button type="submit">Compare Drivers</button></form></section>
+{% if error %}<section class="panel error" role="alert">{{ error }}</section>{% endif %}
+{% if results %}<section class="panel"><h2>Comparison results</h2><div class="stats"><div class="stat"><strong>{{ results.route_count }}</strong>Amazon drivers</div><div class="stat"><strong>{{ results.matched_count }}</strong>Matched drivers</div><div class="stat"><strong>{{ results.missing|length }}</strong>Missing drivers</div></div>
+<h3>Missing from the second list</h3>{% for name in results.missing %}<div class="missing">{{ loop.index }}. {{ name }}</div>{% else %}<p class="ok">All route drivers were found in your second list.</p>{% endfor %}
+<button type="button" onclick="downloadCSV()">Download missing names CSV</button></section>
+<script>function downloadCSV(){const names={{ results.missing|tojson }};const csv='Driver Name\r\n'+names.map(n=>'"'+n.replaceAll('"','""')+'"').join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='connected-couriers-missing-drivers.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}</script>{% endif %}
+</main></body></html>

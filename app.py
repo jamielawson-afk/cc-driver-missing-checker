@@ -105,17 +105,30 @@ def nickname_key(value):
     parts = normalise(value).split()
     return ' '.join([FIRST_NAME_ALIASES.get(parts[0], parts[0]), *parts[1:]]) if len(parts) >= 2 else ''
 
+def initial_key(value):
+    parts = normalise(value).split()
+    return ' '.join([parts[0][0], *parts[1:]]) if len(parts) >= 2 else ''
+
+
 def compare_route_drivers(routes, drivers):
-    from collections import Counter
-    rc = Counter(nickname_key(n) for n in routes)
-    dc = Counter(nickname_key(n) for n in drivers)
-    exact = {normalise(n) for n in drivers}
-    missing = []
-    for name in routes:
-        key = nickname_key(name)
-        if normalise(name) not in exact and not (key and rc[key] == 1 and dc[key] == 1):
-            missing.append(name)
-    return missing
+    # Match exact names first, then unique nicknames, then unique initials.
+    # Never reuse a roster entry or guess between multiple candidates.
+    remaining = set(range(len(drivers)))
+    pending = list(range(len(routes)))
+    for key_fn in (normalise, nickname_key, initial_key):
+        route_groups, driver_groups = {}, {}
+        for i in pending:
+            route_groups.setdefault(key_fn(routes[i]), []).append(i)
+        for j in remaining:
+            driver_groups.setdefault(key_fn(drivers[j]), []).append(j)
+        matched = set()
+        for key, ids in route_groups.items():
+            candidates = driver_groups.get(key, [])
+            if key and len(ids) == 1 and len(candidates) == 1:
+                matched.add(ids[0])
+                remaining.remove(candidates[0])
+        pending = [i for i in pending if i not in matched]
+    return [routes[i] for i in pending]
 
 
 def read_rows(file):
@@ -134,7 +147,7 @@ def read_rows(file):
 def valid_name(text):
     name = normalise(text)
     words = name.split()
-    return 2 <= len(words) <= 5 and all(len(word) >= 2 for word in words)
+    return 2 <= len(words) <= 5 and len(words[0]) >= 1 and all(len(word) >= 2 for word in words[1:])
 
 
 def route_names(rows):

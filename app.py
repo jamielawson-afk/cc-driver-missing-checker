@@ -105,17 +105,20 @@ def nickname_key(value):
     parts = normalise(value).split()
     return ' '.join([FIRST_NAME_ALIASES.get(parts[0], parts[0]), *parts[1:]]) if len(parts) >= 2 else ''
 
+def short_name_key(value):
+    parts = normalise(value).split()
+    return ' '.join([FIRST_NAME_ALIASES.get(parts[0], parts[0]), parts[-1]]) if len(parts) >= 2 else ''
+
+
 def initial_key(value):
     parts = normalise(value).split()
-    return ' '.join([parts[0][0], *parts[1:]]) if len(parts) >= 2 else ''
+    return parts[0][0] + ' ' + parts[-1] if len(parts) >= 2 else ''
 
 
 def compare_route_drivers(routes, drivers):
-    # Match exact names first, then unique nicknames, then unique initials.
-    # Never reuse a roster entry or guess between multiple candidates.
     remaining = set(range(len(drivers)))
     pending = list(range(len(routes)))
-    for key_fn in (normalise, nickname_key, initial_key):
+    for key_fn in (normalise, nickname_key, short_name_key, initial_key):
         route_groups, driver_groups = {}, {}
         for i in pending:
             route_groups.setdefault(key_fn(routes[i]), []).append(i)
@@ -161,8 +164,10 @@ def route_names(rows):
     found = {}
     for row in rows[1:]:
         name = str(row[idx] or '').strip() if len(row) > idx else ''
-        if valid_name(name):
-            found.setdefault(normalise(name), name)
+        for individual in name.split('|'):
+            individual = individual.strip()
+            if valid_name(individual):
+                found.setdefault(normalise(individual), individual)
     return list(found.values())
 
 
@@ -187,8 +192,10 @@ def driver_names(rows):
             name = f'{cells[0]} {cells[1]}'
         else:
             name = cells[0] if cells else ''
-        if valid_name(name):
-            found.setdefault(normalise(name), name)
+        for individual in name.split('|'):
+            individual = individual.strip()
+            if valid_name(individual):
+                found.setdefault(normalise(individual), individual)
     return list(found.values())
 
 

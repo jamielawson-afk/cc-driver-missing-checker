@@ -85,6 +85,10 @@ def master_list():
 
 # Known, reviewed spelling variants, not general fuzzy matching.
 ALIASES = {
+    'scott keiran': 'scott kiernan',
+    'bonny george': 'bonnykimberley george',
+    'chris white': 'christopher white',
+    'frank hughes': 'franklyn connor hughes',
     'rhys robins': 'rhys robbins',
     'drew johson': 'drew johnson',
     'kirstry perham': 'kirsty perham',

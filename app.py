@@ -99,6 +99,25 @@ def normalise(value):
     return ALIASES.get(s, s)
 
 
+FIRST_NAME_ALIASES = {"frank":"franklyn","frankie":"franklyn","franklin":"franklyn","jim":"james","jimmy":"james","jamie":"james","mike":"michael","mikey":"michael","chris":"christopher","dan":"daniel","danny":"daniel","matt":"matthew","matty":"matthew","tom":"thomas","tommy":"thomas","will":"william","bill":"william","billy":"william","rob":"robert","robbie":"robert","bob":"robert","alex":"alexander"}
+
+def nickname_key(value):
+    parts = normalise(value).split()
+    return ' '.join([FIRST_NAME_ALIASES.get(parts[0], parts[0]), *parts[1:]]) if len(parts) >= 2 else ''
+
+def compare_route_drivers(routes, drivers):
+    from collections import Counter
+    rc = Counter(nickname_key(n) for n in routes)
+    dc = Counter(nickname_key(n) for n in drivers)
+    exact = {normalise(n) for n in drivers}
+    missing = []
+    for name in routes:
+        key = nickname_key(name)
+        if normalise(name) not in exact and not (key and rc[key] == 1 and dc[key] == 1):
+            missing.append(name)
+    return missing
+
+
 def read_rows(file):
     if not file or not file.filename:
         return []
@@ -190,8 +209,7 @@ def index():
                 raise ValueError('No route driver names found in the Amazon file.')
             if not drivers:
                 raise ValueError('No names found in the second driver list.')
-            registered = {normalise(n) for n in drivers}
-            missing = [n for n in routes if normalise(n) not in registered]
+            missing = compare_route_drivers(routes, drivers)
             result = {'route_count': len(routes), 'list_count': len(drivers),
                       'matched_count': len(routes) - len(missing), 'missing': missing}
         except (ValueError, UnicodeError, OSError, KeyError, TypeError) as exc:

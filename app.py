@@ -371,6 +371,51 @@ def training():
     return render_template('training.html', report=report, error=error)
 
 
+def shift_initials(name):
+    """Return both initials, including entries written J.L., J L or JL."""
+    raw = str(name or '').strip()
+    compact = re.sub(r'[^a-z]', '', raw.casefold())
+    parts = normalise(raw).split()
+    if len(parts) >= 2:
+        return parts[0][0] + parts[-1][0]
+    return compact if len(compact) == 2 else ''
+
+
+def shift_possible_matches(name, masters):
+    """Suggestions only: never silently accept fuzzy name similarities."""
+    from difflib import SequenceMatcher
+    parts = normalise(name).split()
+    if not parts:
+        return []
+    first = FIRST_NAME_ALIASES.get(parts[0], parts[0])
+    last = parts[-1] if len(parts) > 1 else ''
+    initials = shift_initials(name)
+    suggestions = []
+    for master in masters:
+        mp = normalise(master).split()
+        if len(mp) < 2:
+            continue
+        mf = FIRST_NAME_ALIASES.get(mp[0], mp[0]); ml = mp[-1]
+        reason = None
+        if initials and initials == shift_initials(master):
+            reason = 'Same initials'
+        elif last and last == ml:
+            reason = 'Same surname'
+        elif last and first == mf and SequenceMatcher(None, last, ml).ratio() >= 0.72:
+            reason = 'Similar surname spelling'
+        elif last and ml and first == mf:
+            reason = 'Same first name — check surname'
+        elif last and ml and SequenceMatcher(None, last, ml).ratio() >= 0.84:
+            reason = 'Similar surname spelling'
+        if reason:
+            suggestions.append({'name': master, 'reason': reason})
+    # Rank strongest evidence first; don't bury initials/surname candidates.
+    priority = {'Same surname': 0, 'Same initials': 1, 'Similar surname spelling': 2,
+                'Same first name — check surname': 3}
+    suggestions.sort(key=lambda x: (priority[x['reason']], x['name'].casefold()))
+    return suggestions[:8]
+
+
 def parse_shift_report(file):
     rows = read_rows(file)
     if not rows:
@@ -385,7 +430,7 @@ def parse_shift_report(file):
         first = str(row[first_idx] or '').strip() if len(row) > first_idx else ''
         last = str(row[last_idx] or '').strip() if len(row) > last_idx else ''
         name = ' '.join((first, last)).strip()
-        if valid_name(name):
+        if valid_name(name) or len(re.sub(r'[^a-z]', '', name.casefold())) == 2:
             found.setdefault(normalise(name), name)
     shift_names = list(found.values())
     if not shift_names:
@@ -393,35 +438,36 @@ def parse_shift_report(file):
     masters = [r['name'] for r in master_list()]
     remaining_shift = set(range(len(shift_names)))
     remaining_master = set(range(len(masters)))
-    # Exact names, recognised shortened names, then unique initial + surname.
-    # A match is only accepted if unique on both sides at that stage.
-    for level in (0, 1, 2):
+    # Exact, recognised nickname + surname, then unique initial + surname.
+    # Finally both initials, only if unique on BOTH sides.
+    def match_level(name, level):
+        keys = match_keys(name)
+        return keys[level] if level < 3 and len(keys) > level else shift_initials(name) if level == 3 else ''
+    for level in range(4):
         shift_groups, master_groups = {}, {}
         for i in sorted(remaining_shift):
-            keys = match_keys(shift_names[i])
-            if len(keys) > level:
-                shift_groups.setdefault(keys[level], []).append(i)
+            key = match_level(shift_names[i], level)
+            if key:
+                shift_groups.setdefault(key, []).append(i)
         for j in sorted(remaining_master):
-            keys = match_keys(masters[j])
-            if len(keys) > level:
-                master_groups.setdefault(keys[level], []).append(j)
+            key = match_level(masters[j], level)
+            if key:
+                master_groups.setdefault(key, []).append(j)
         for key, ids in shift_groups.items():
             candidates = master_groups.get(key, [])
             if len(ids) == len(candidates) == 1:
                 remaining_shift.remove(ids[0])
                 remaining_master.remove(candidates[0])
-    # Report possible name collisions separately rather than silently matching.
-    unmatched, ambiguous = [], []
+    unmatched, possible = [], []
     for i in sorted(remaining_shift):
-        keys = match_keys(shift_names[i])
-        candidates = [masters[j] for j in sorted(remaining_master)
-                      if set(keys) & set(match_keys(masters[j]))]
+        name = shift_names[i]
+        candidates = shift_possible_matches(name, masters)
         if candidates:
-            ambiguous.append({'name': shift_names[i], 'candidates': candidates})
+            possible.append({'name': name, 'candidates': candidates})
         else:
-            unmatched.append(shift_names[i])
+            unmatched.append(name)
     return {'total': len(shift_names), 'matched': len(shift_names)-len(remaining_shift),
-            'unmatched': unmatched, 'ambiguous': ambiguous}
+            'unmatched': unmatched, 'ambiguous': possible}
 
 @app.route('/shift-report', methods=['GET', 'POST'])
 def shift_report():

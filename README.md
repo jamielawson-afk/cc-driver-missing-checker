@@ -31,4 +31,4 @@ Paste the first-name and last-name codes separated by a tab, space, or newline. 
 
 
 ## Driver Training Recommendations
-Office-only `/training` page accepts Amazon Mentor Driver Report .xlsx/.csv. Matches the two encoded First Name/Last Name fields against current SQLite Master List, case-insensitively. Shows real names only on a unique pair match; never guesses. Minimum 805, maximum 850; below 805 receives event-specific coaching suggestions. No uploaded report stored. Sorted lowest score first. Print to PDF in browser.
+Office-only `/training` page accepts Amazon Mentor Driver Report .xlsx/.csv. Matches the two encoded First Name/Last Name fields against current SQLite Master List, case-insensitively. Shows real names only on a unique pair match; never guesses. Minimum 820, maximum 850; below 820 receives event-specific coaching suggestions. No uploaded report stored. Sorted lowest score first. Print to PDF in browser.

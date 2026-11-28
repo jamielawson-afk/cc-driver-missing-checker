@@ -331,7 +331,7 @@ def parse_driver_training_report(file):
         matched = len(names) == 1
         name = names[0] if matched else 'Unmatched driver' if not names else 'Ambiguous driver'
         findings = []
-        if score < 805:
+        if score < 820:
             for count_col, rating_col, title, suggestion in [
                 ('Speeding', 'Speeding Rating', 'Speeding', 'Review speed limits, use cruise control where appropriate, and avoid rushing to meet delivery times.'),
                 ('Hard Braking', 'Braking Rating', 'Harsh braking', 'Increase following distance, scan further ahead, and brake progressively.'),
@@ -350,7 +350,7 @@ def parse_driver_training_report(file):
             if not findings:
                 findings.append({'issue': 'General driving review', 'detail': 'Review the detailed Mentor feedback with the driver, provide a coached drive, and monitor the next report. The available event fields do not identify a specific cause of the low score.'})
         output.append({'name': name, 'matched': matched, 'code1': first, 'code2': last, 'score': int(score) if score.is_integer() else score,
-                       'below': score < 805, 'gap': max(0, round(805-score,1)), 'findings': findings,
+                       'below': score < 820, 'gap': max(0, round(820-score,1)), 'findings': findings,
                        'trips': get('Total Driver Trips')})
     output.sort(key=lambda d: (d['score'], d['name']))
     return {'drivers': output, 'below': sum(x['below'] for x in output), 'matched': sum(x['matched'] for x in output),

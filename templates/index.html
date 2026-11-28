@@ -11,7 +11,7 @@
 <section class="panel" id="checker"><h2>Upload today's lists</h2><form action="/" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 <label for="routes">1. Amazon Routes report</label><input id="routes" type="file" name="routes" accept=".xlsx,.csv" required>
 <label for="driver_text">2. Copy and paste driver names</label><textarea id="driver_text" name="driver_text"></textarea>
-<p class="hint">Upload the Amazon Routes report and paste your driver names, then compare. VINs are ignored. Duplicate names are counted once. Exact names, known nicknames and unique first-initial plus surname matches are supported. Ambiguous matches remain missing for manual review. Files are processed in memory, not saved by the app.</p>
+<p class="hint">Upload the Amazon Routes report and paste your driver names, then compare. VINs are ignored. Duplicate names are counted once. Known spelling variations are matched. Files are processed in memory, not saved by the app.</p>
 <button type="submit">Compare Drivers</button></form></section>
 {% if error %}<section class="panel error" role="alert">{{ error }}</section>{% endif %}
 {% if results %}<section class="panel"><h2>Comparison results</h2><div class="stats"><div class="stat"><strong>{{ results.route_count }}</strong>Amazon drivers</div><div class="stat"><strong>{{ results.matched_count }}</strong>Matched drivers</div><div class="stat"><strong>{{ results.missing|length }}</strong>Missing drivers</div></div>
@@ -56,10 +56,7 @@ function filterMasterList(){
       match=(a===code1 && b===code2)||(a===code2 && b===code1);
     }else{
       const q=query.toLocaleLowerCase();
-      const aliases={"frank":"franklyn","frankie":"franklyn","franklin":"franklyn","jim":"james","jimmy":"james","jamie":"james","mike":"michael","mikey":"michael","chris":"christopher","dan":"daniel","danny":"daniel","matt":"matthew","matty":"matthew","tom":"thomas","tommy":"thomas","will":"william","bill":"william","billy":"william","rob":"robert","robbie":"robert","bob":"robert","alex":"alexander"};
-      const key=v=>{const p=v.normalize('NFKC').toLowerCase().trim().split(/\s+/);return [aliases[p[0]]||p[0],...p.slice(1)].join(' ');};
-      const initial=v=>{const p=v.toLowerCase().replace(/[^a-z\s-]/g,' ').replace(/-/g,' ').trim().split(/\s+/);return p.length>=2?p[0][0]+' '+p.slice(1).join(' '):'';};
-      match=name.includes(q)||code1.includes(q)||code2.includes(q)||key(name)===key(q)||key(name).split(' ')[0]===key(q)||(initial(q)!==''&&initial(name)===initial(q));
+      match=name.includes(q)||code1.includes(q)||code2.includes(q);
     }
     row.hidden=!match;
     if(match){matches++;matchedNames.push(row.dataset.name)}

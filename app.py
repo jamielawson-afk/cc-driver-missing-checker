@@ -86,9 +86,6 @@ def master_list():
 # Known, reviewed spelling variants, not general fuzzy matching.
 ALIASES = {
     'scott keiran': 'scott kiernan',
-    'bonny george': 'bonnykimberley george',
-    'chris white': 'christopher white',
-    'frank hughes': 'franklyn connor hughes',
     'rhys robins': 'rhys robbins',
     'drew johson': 'drew johnson',
     'kirstry perham': 'kirsty perham',
@@ -103,39 +100,50 @@ def normalise(value):
     return ALIASES.get(s, s)
 
 
-FIRST_NAME_ALIASES = {"frank":"franklyn","frankie":"franklyn","franklin":"franklyn","jim":"james","jimmy":"james","jamie":"james","mike":"michael","mikey":"michael","chris":"christopher","dan":"daniel","danny":"daniel","matt":"matthew","matty":"matthew","tom":"thomas","tommy":"thomas","will":"william","bill":"william","billy":"william","rob":"robert","robbie":"robert","bob":"robert","alex":"alexander"}
 
-def nickname_key(value):
-    parts = normalise(value).split()
-    return ' '.join([FIRST_NAME_ALIASES.get(parts[0], parts[0]), *parts[1:]]) if len(parts) >= 2 else ''
+# Reviewed common variants; avoid general fuzzy matching that confuses drivers.
+FIRST_NAME_ALIASES = {
+    'scott keiran': 'scott kiernan',
+    'frank': 'franklyn', 'franklin': 'franklyn', 'frankie': 'franklyn',
+    'chris': 'christopher', 'bonny': 'bonnykimberley',
+    'jim': 'james', 'jimmy': 'james', 'mike': 'michael',
+    'dan': 'daniel', 'danny': 'daniel', 'matt': 'matthew',
+    'tom': 'thomas', 'tommy': 'thomas', 'will': 'william',
+    'bill': 'william', 'billy': 'william', 'rob': 'robert',
+    'robbie': 'robert', 'bob': 'robert', 'alex': 'alexander',
+    'andy': 'andrew', 'dave': 'david', 'tim': 'timothy',
+    'jon': 'jonathan', 'john': 'jonathan',
+}
 
-def short_name_key(value):
-    parts = normalise(value).split()
-    return ' '.join([FIRST_NAME_ALIASES.get(parts[0], parts[0]), parts[-1]]) if len(parts) >= 2 else ''
-
-
-def initial_key(value):
-    parts = normalise(value).split()
-    return parts[0][0] + ' ' + parts[-1] if len(parts) >= 2 else ''
-
+def match_keys(name):
+    parts = normalise(name).split()
+    if len(parts) < 2:
+        return ()
+    first = FIRST_NAME_ALIASES.get(parts[0], parts[0])
+    surname = parts[-1]
+    # The full name and first/surname pair both work with middle names.
+    return (normalise(name), first + ' ' + surname, first[0] + ' ' + surname)
 
 def compare_route_drivers(routes, drivers):
-    remaining = set(range(len(drivers)))
-    pending = list(range(len(routes)))
-    for key_fn in (normalise, nickname_key, short_name_key, initial_key):
+    # One-to-one matching; initials only if unique on BOTH sides.
+    remaining_routes = set(range(len(routes)))
+    remaining_drivers = set(range(len(drivers)))
+    keys = {i: match_keys(name) for i, name in enumerate(routes)}
+    roster_keys = {i: match_keys(name) for i, name in enumerate(drivers)}
+    for level in (0, 1, 2):
         route_groups, driver_groups = {}, {}
-        for i in pending:
-            route_groups.setdefault(key_fn(routes[i]), []).append(i)
-        for j in remaining:
-            driver_groups.setdefault(key_fn(drivers[j]), []).append(j)
-        matched = set()
-        for key, ids in route_groups.items():
+        for i in sorted(remaining_routes):
+            if len(keys[i]) > level:
+                route_groups.setdefault(keys[i][level], []).append(i)
+        for j in sorted(remaining_drivers):
+            if len(roster_keys[j]) > level:
+                driver_groups.setdefault(roster_keys[j][level], []).append(j)
+        for key, route_ids in route_groups.items():
             candidates = driver_groups.get(key, [])
-            if key and len(ids) == 1 and len(candidates) == 1:
-                matched.add(ids[0])
-                remaining.remove(candidates[0])
-        pending = [i for i in pending if i not in matched]
-    return [routes[i] for i in pending]
+            if len(route_ids) == len(candidates) == 1:
+                remaining_routes.remove(route_ids[0])
+                remaining_drivers.remove(candidates[0])
+    return [routes[i] for i in sorted(remaining_routes)]
 
 
 def read_rows(file):
@@ -154,7 +162,7 @@ def read_rows(file):
 def valid_name(text):
     name = normalise(text)
     words = name.split()
-    return 2 <= len(words) <= 5 and len(words[0]) >= 1 and all(len(word) >= 2 for word in words[1:])
+    return 2 <= len(words) <= 5 and all(len(word) >= 2 for word in words)
 
 
 def route_names(rows):
@@ -167,11 +175,12 @@ def route_names(rows):
         raise ValueError('Amazon Routes file must contain a Driver name column.')
     found = {}
     for row in rows[1:]:
-        name = str(row[idx] or '').strip() if len(row) > idx else ''
-        for individual in name.split('|'):
-            individual = individual.strip()
-            if valid_name(individual):
-                found.setdefault(normalise(individual), individual)
+        cell = str(row[idx] or '') if len(row) > idx else ''
+        # Amazon may put several drivers on a single route, separated by pipes.
+        for item in cell.split('|'):
+            name = item.strip()
+            if valid_name(name):
+                found.setdefault(normalise(name), name)
     return list(found.values())
 
 
@@ -196,10 +205,10 @@ def driver_names(rows):
             name = f'{cells[0]} {cells[1]}'
         else:
             name = cells[0] if cells else ''
-        for individual in name.split('|'):
-            individual = individual.strip()
-            if valid_name(individual):
-                found.setdefault(normalise(individual), individual)
+        for item in name.split('|'):
+            item = item.strip()
+            if valid_name(item):
+                found.setdefault(normalise(item), item)
     return list(found.values())
 
 

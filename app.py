@@ -370,6 +370,72 @@ def training():
             error = 'Could not read this Driver Report. Please check the file and try again.'
     return render_template('training.html', report=report, error=error)
 
+
+def parse_shift_report(file):
+    rows = read_rows(file)
+    if not rows:
+        raise ValueError('Upload an Amazon Shift Report (.xlsx or .csv).')
+    header = [normalise(v) for v in rows[0]]
+    try:
+        first_idx, last_idx = header.index('first name'), header.index('last name')
+    except ValueError:
+        raise ValueError('Shift Report must include First Name and Last Name columns.')
+    found = {}
+    for row in rows[1:]:
+        first = str(row[first_idx] or '').strip() if len(row) > first_idx else ''
+        last = str(row[last_idx] or '').strip() if len(row) > last_idx else ''
+        name = ' '.join((first, last)).strip()
+        if valid_name(name):
+            found.setdefault(normalise(name), name)
+    shift_names = list(found.values())
+    if not shift_names:
+        raise ValueError('No valid driver names found in the Shift Report.')
+    masters = [r['name'] for r in master_list()]
+    remaining_shift = set(range(len(shift_names)))
+    remaining_master = set(range(len(masters)))
+    # Exact names, recognised shortened names, then unique initial + surname.
+    # A match is only accepted if unique on both sides at that stage.
+    for level in (0, 1, 2):
+        shift_groups, master_groups = {}, {}
+        for i in sorted(remaining_shift):
+            keys = match_keys(shift_names[i])
+            if len(keys) > level:
+                shift_groups.setdefault(keys[level], []).append(i)
+        for j in sorted(remaining_master):
+            keys = match_keys(masters[j])
+            if len(keys) > level:
+                master_groups.setdefault(keys[level], []).append(j)
+        for key, ids in shift_groups.items():
+            candidates = master_groups.get(key, [])
+            if len(ids) == len(candidates) == 1:
+                remaining_shift.remove(ids[0])
+                remaining_master.remove(candidates[0])
+    # Report possible name collisions separately rather than silently matching.
+    unmatched, ambiguous = [], []
+    for i in sorted(remaining_shift):
+        keys = match_keys(shift_names[i])
+        candidates = [masters[j] for j in sorted(remaining_master)
+                      if set(keys) & set(match_keys(masters[j]))]
+        if candidates:
+            ambiguous.append({'name': shift_names[i], 'candidates': candidates})
+        else:
+            unmatched.append(shift_names[i])
+    return {'total': len(shift_names), 'matched': len(shift_names)-len(remaining_shift),
+            'unmatched': unmatched, 'ambiguous': ambiguous}
+
+@app.route('/shift-report', methods=['GET', 'POST'])
+def shift_report():
+    result, error = None, None
+    if request.method == 'POST':
+        try:
+            result = parse_shift_report(request.files.get('shift_report'))
+        except (ValueError, UnicodeError, OSError, KeyError, TypeError) as exc:
+            error = str(exc)
+        except Exception:
+            app.logger.exception('Unable to process Shift Report')
+            error = 'Could not read this Shift Report. Please check the file and try again.'
+    return render_template('shift_report.html', result=result, error=error)
+
 @app.route('/health')
 def health():
     return {'ok': True}
